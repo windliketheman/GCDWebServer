@@ -30,6 +30,8 @@ var ENTER_KEYCODE = 13;
 var _path = null;
 var _pendingReloads = [];
 var _reloadingDisabled = 0;
+var _folderUploadMap = {};
+var _pendingCreates = 0;
 
 function formatFileSize(bytes) {
   if (bytes >= 1000000000) {
@@ -189,8 +191,8 @@ $(document).ready(function() {
     event.stopPropagation();
   });
   
-  $("#fileupload").fileupload({
-    dropZone: $(document),
+  var uploader = $("#fileupload").fileupload({
+    dropZone: null,
     pasteZone: null,
     autoUpload: true,
     sequentialUploads: true,
@@ -207,15 +209,45 @@ $(document).ready(function() {
     
     stop: function(e) {
       $(".uploading").hide();
+      _folderUploadMap = {};
     },
     
     add: function(e, data) {
       var file = data.files[0];
-      data.formData = {
-        path: _path
+      var existingFormData = data.formData || {};
+      var formMap = {};
+      if ($.isArray(existingFormData)) {
+        for (var i = 0; i < existingFormData.length; i++) {
+          var item = existingFormData[i];
+          if (item && item.name) {
+            formMap[item.name] = item.value;
+          }
+        }
+      } else {
+        formMap = existingFormData;
+      }
+      var relativePath = formMap.relativePath || (file.webkitRelativePath && file.webkitRelativePath.length ? file.webkitRelativePath : null);
+      var uploadPath = formMap.path || _path;
+      var uploadId = formMap.uploadId || null;
+      if (!uploadId && relativePath) {
+        var rootName = relativePath.split("/")[0];
+        var mapKey = uploadPath + "|" + rootName;
+        if (!_folderUploadMap[mapKey]) {
+          _folderUploadMap[mapKey] = Date.now().toString() + "-" + Math.random().toString(36).slice(2, 8);
+        }
+        uploadId = _folderUploadMap[mapKey];
+      }
+      data.paramName = data.paramName || 'files[]';
+      var formData = {
+        path: uploadPath,
+        uploadId: uploadId
       };
+      if (relativePath) {
+        formData.relativePath = relativePath;
+      }
+      data.formData = formData;
       data.context = $(tmpl("template-uploads", {
-        path: _path + file.name
+        path: uploadPath + (relativePath ? relativePath : file.name)
       })).appendTo("#uploads");
       var jqXHR = data.submit();
       data.context.find("button").click(function(event) {
@@ -244,6 +276,199 @@ $(document).ready(function() {
     },
     
   });
+
+  function _submitFile(file, relativePath, uploadId) {
+    var formData = { path: _path, uploadId: uploadId };
+    if (relativePath) {
+      formData.relativePath = relativePath;
+    }
+    uploader.fileupload('add', {
+      files: [file],
+      formData: formData
+    });
+  }
+
+  function _submitFileWithPath(file, uploadPath) {
+    uploader.fileupload('add', {
+      files: [file],
+      formData: {
+        path: uploadPath
+      }
+    });
+  }
+
+  function _finishCreate() {
+    _pendingCreates = Math.max(0, _pendingCreates - 1);
+    if (_pendingCreates === 0) {
+      if (!_reloadingDisabled) {
+        var pathToReload = _path || "/";
+        $("#reload").trigger("click");
+        setTimeout(function() {
+          _reload(pathToReload);
+        }, 100);
+      } else if ($.inArray(_path, _pendingReloads) < 0) {
+        _pendingReloads.push(_path);
+      }
+    }
+  }
+
+  function _createDirectory(relativePath, uploadId) {
+    if (!relativePath || !relativePath.length) {
+      return;
+    }
+    _pendingCreates += 1;
+    $.ajax({
+      url: 'create-upload',
+      type: 'POST',
+      data: { path: _path, relativePath: relativePath, uploadId: uploadId },
+      dataType: 'json'
+    }).done(function() {
+      _finishCreate();
+    }).fail(function(jqXHR, textStatus, errorThrown) {
+      _showError("Failed creating folder \"" + relativePath + "\"", textStatus, errorThrown);
+      _finishCreate();
+    });
+  }
+
+  function _normalizeEntryPath(entry) {
+    if (entry.fullPath && entry.fullPath.length) {
+      return entry.fullPath.replace(/^\/+/, '');
+    }
+    return entry.name || '';
+  }
+
+  function _normalizeFilePath(entry, file) {
+    if (entry.fullPath && entry.fullPath.length) {
+      return entry.fullPath.replace(/^\/+/, '');
+    }
+    return file && file.name ? file.name : '';
+  }
+
+  function _walkEntry(entry, uploadId) {
+    if (entry.isFile) {
+      entry.file(function(file) {
+        var relativePath = _normalizeFilePath(entry, file);
+        _submitFile(file, relativePath, uploadId);
+      });
+    } else if (entry.isDirectory) {
+      var dirPath = _normalizeEntryPath(entry);
+      _createDirectory(dirPath, uploadId);
+      var reader = entry.createReader();
+      reader.readEntries(function(entries) {
+        for (var i = 0; i < entries.length; i++) {
+          _walkEntry(entries[i], uploadId);
+        }
+      });
+    }
+  }
+
+  function _stripRootPath(fullPath, rootName) {
+    var normalized = fullPath.replace(/^\/+/, '');
+    if (rootName && normalized.indexOf(rootName + '/') === 0) {
+      return normalized.substring(rootName.length + 1);
+    }
+    return normalized;
+  }
+
+  function _walkEntryWithBase(entry, rootName, mappedBasePath) {
+    if (entry.isFile) {
+      entry.file(function(file) {
+        var fullPath = _normalizeFilePath(entry, file);
+        var subPath = _stripRootPath(fullPath, rootName);
+        var subDir = '';
+        if (subPath.indexOf('/') >= 0) {
+          subDir = subPath.substring(0, subPath.lastIndexOf('/'));
+        }
+        var uploadPath = mappedBasePath;
+        if (subDir.length) {
+          uploadPath = uploadPath + '/' + subDir;
+        }
+        _submitFileWithPath(file, uploadPath);
+      });
+    } else if (entry.isDirectory) {
+      var reader = entry.createReader();
+      reader.readEntries(function(entries) {
+        for (var i = 0; i < entries.length; i++) {
+          _walkEntryWithBase(entries[i], rootName, mappedBasePath);
+        }
+      });
+    }
+  }
+
+  function _walkEntry(entry, uploadId) {
+    if (entry.isFile) {
+      entry.file(function(file) {
+        var relativePath = entry.fullPath ? entry.fullPath.replace(/^\//, '') : file.name;
+        _submitFile(file, relativePath, uploadId);
+      });
+    } else if (entry.isDirectory) {
+      var dirPath = entry.fullPath ? entry.fullPath.replace(/^\//, '') : entry.name;
+      if (dirPath) {
+        _createDirectory(dirPath, uploadId);
+      }
+      var reader = entry.createReader();
+      reader.readEntries(function(entries) {
+        for (var i = 0; i < entries.length; i++) {
+          _walkEntry(entries[i], uploadId);
+        }
+      });
+    }
+  }
+
+  function _handleDrop(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    var items = event.originalEvent.dataTransfer.items;
+    if (!items || !items.length) {
+      return;
+    }
+
+    var folderHandled = false;
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      if (!item.webkitGetAsEntry) {
+        continue;
+      }
+      var entry = item.webkitGetAsEntry();
+      if (entry && entry.isDirectory) {
+        folderHandled = true;
+        var rootName = entry.name;
+        var mapKey = _path + '|' + rootName;
+        if (!_folderUploadMap[mapKey]) {
+          _folderUploadMap[mapKey] = Date.now().toString() + '-' + Math.random().toString(36).slice(2, 8);
+        }
+        var uploadId = _folderUploadMap[mapKey];
+        _pendingCreates += 1;
+        $.ajax({
+          url: 'create-upload',
+          type: 'POST',
+          data: { path: _path, relativePath: rootName, uploadId: uploadId },
+          dataType: 'json'
+        }).done(function(response) {
+          var mappedPath = response && response.path ? response.path : (_path + rootName);
+          _walkEntryWithBase(entry, rootName, mappedPath);
+          _finishCreate();
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+          _showError("Failed creating folder \"" + rootName + "\"", textStatus, errorThrown);
+          _finishCreate();
+        });
+      }
+    }
+
+    if (!folderHandled) {
+      var files = event.originalEvent.dataTransfer.files;
+      if (files && files.length) {
+        uploader.fileupload('add', { files: files });
+      }
+    }
+  }
+
+  $(document).on('dragover', function(event) {
+    event.preventDefault();
+  });
+
+  $(document).on('drop', _handleDrop);
   
   $("#create-input").keypress(function(event) {
     if (event.keyCode == ENTER_KEYCODE) {
