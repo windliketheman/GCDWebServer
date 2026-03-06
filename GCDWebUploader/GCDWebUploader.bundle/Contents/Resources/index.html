@@ -50,7 +50,7 @@
     <script type="text/javascript">
       var _device = "%device%";
     </script>
-    <script type="text/javascript" src="js/index.js?v=20260303-5"></script>
+    <script type="text/javascript" src="js/index.js?v=20260303-8"></script>
   </head>
   <body>
     
@@ -140,11 +140,7 @@
     <script type="text/x-tmpl" id="template-listing">
       <tr class="row-file">
         <td class="column-icon">
-          {% if (o.size != null) { %}
-            <button type="button" class="btn btn-default btn-xs button-download">
-              <span class="glyphicon glyphicon-download-alt"></span>
-            </button>
-          {% } else { %}
+          {% if (o.size == null) { %}
             <button type="button" class="btn btn-default btn-xs button-open">
               <span class="glyphicon glyphicon-folder-open"></span>
             </button>
@@ -159,6 +155,11 @@
         <td class="column-move">
           <button type="button" class="btn btn-default btn-xs button-move">
             <span class="glyphicon glyphicon glyphicon-share-alt"></span>
+          </button>
+        </td>
+        <td class="column-download">
+          <button type="button" class="btn btn-default btn-xs button-download">
+            <span class="glyphicon glyphicon-download-alt"></span>
           </button>
         </td>
         <td class="column-delete">

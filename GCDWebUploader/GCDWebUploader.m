@@ -46,6 +46,7 @@
 #import "GCDWebServerDataResponse.h"
 #import "GCDWebServerErrorResponse.h"
 #import "GCDWebServerFileResponse.h"
+#import <SSZipArchive/SSZipArchive.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -374,25 +375,29 @@ NS_ASSUME_NONNULL_END
     return [GCDWebServerErrorResponse responseWithServerError:kGCDWebServerHTTPStatusCode_InternalServerError underlyingError:error message:@"Failed listing directory \"%@\"", relativePath];
   }
 
-  NSMutableArray* array = [NSMutableArray array];
+  NSMutableArray* folders = [NSMutableArray array];
+  NSMutableArray* files = [NSMutableArray array];
   for (NSString* item in [contents sortedArrayUsingSelector:@selector(localizedStandardCompare:)]) {
     if (_allowHiddenItems || ![item hasPrefix:@"."]) {
       NSDictionary* attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[absolutePath stringByAppendingPathComponent:item] error:NULL];
       NSString* type = [attributes objectForKey:NSFileType];
-      if ([type isEqualToString:NSFileTypeRegular] && [self _checkFileExtension:item]) {
-        [array addObject:@{
+      if ([type isEqualToString:NSFileTypeDirectory]) {
+        [folders addObject:@{
+          @"path" : [[relativePath stringByAppendingPathComponent:item] stringByAppendingString:@"/"],
+          @"name" : item
+        }];
+      } else if ([type isEqualToString:NSFileTypeRegular] && [self _checkFileExtension:item]) {
+        [files addObject:@{
           @"path" : [relativePath stringByAppendingPathComponent:item],
           @"name" : item,
           @"size" : (NSNumber*)[attributes objectForKey:NSFileSize]
         }];
-      } else if ([type isEqualToString:NSFileTypeDirectory]) {
-        [array addObject:@{
-          @"path" : [[relativePath stringByAppendingPathComponent:item] stringByAppendingString:@"/"],
-          @"name" : item
-        }];
       }
     }
   }
+  NSMutableArray* array = [NSMutableArray arrayWithCapacity:folders.count + files.count];
+  [array addObjectsFromArray:folders];
+  [array addObjectsFromArray:files];
   return [GCDWebServerDataResponse responseWithJSONObject:array];
 }
 
@@ -403,13 +408,30 @@ NS_ASSUME_NONNULL_END
   if (![[NSFileManager defaultManager] fileExistsAtPath:absolutePath isDirectory:&isDirectory]) {
     return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_NotFound message:@"\"%@\" does not exist", relativePath];
   }
-  if (isDirectory) {
-    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_BadRequest message:@"\"%@\" is a directory", relativePath];
+  NSString* fileName = [absolutePath lastPathComponent];
+  if ([fileName hasPrefix:@"."] && !_allowHiddenItems) {
+    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_Forbidden message:@"Downlading file name \"%@\" is not allowed", fileName];
+  }
+  if (!isDirectory && ![self _checkFileExtension:fileName]) {
+    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_Forbidden message:@"Downlading file name \"%@\" is not allowed", fileName];
   }
 
-  NSString* fileName = [absolutePath lastPathComponent];
-  if (([fileName hasPrefix:@"."] && !_allowHiddenItems) || ![self _checkFileExtension:fileName]) {
-    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_Forbidden message:@"Downlading file name \"%@\" is not allowed", fileName];
+  if (isDirectory) {
+    NSString* tempDirectory = [NSTemporaryDirectory() stringByAppendingPathComponent:@"GCDWebUploader"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:tempDirectory withIntermediateDirectories:YES attributes:nil error:NULL];
+    NSString* zipName = [[fileName stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"/"]] stringByAppendingString:@".zip"];
+    NSString* zipPath = [self _uniquePathForPath:[tempDirectory stringByAppendingPathComponent:zipName]];
+
+    BOOL success = [SSZipArchive createZipFileAtPath:zipPath withContentsOfDirectory:absolutePath keepParentDirectory:YES];
+    if (!success) {
+      return [GCDWebServerErrorResponse responseWithServerError:kGCDWebServerHTTPStatusCode_InternalServerError message:@"Failed creating archive for \"%@\"", relativePath];
+    }
+
+    GCDWebServerFileResponse* response = [GCDWebServerFileResponse responseWithFile:zipPath isAttachment:YES];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC)), dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0), ^{
+      [[NSFileManager defaultManager] removeItemAtPath:zipPath error:nil];
+    });
+    return response;
   }
 
   if ([self.delegate respondsToSelector:@selector(webUploader:didDownloadFileAtPath:)]) {

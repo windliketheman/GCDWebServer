@@ -137,19 +137,19 @@ function _reload(path) {
     });
     
     $(".button-download").click(function(event) {
-      var path = $(this).parent().parent().data("path");
+      var path = $(this).closest("tr").data("path");
       setTimeout(function() {
         window.location = "download?path=" + encodeURIComponent(path);
       }, 0);
     });
     
     $(".button-open").click(function(event) {
-      var path = $(this).parent().parent().data("path");
+      var path = $(this).closest("tr").data("path");
       _reload(path);
     });
     
     $(".button-move").click(function(event) {
-      var path = $(this).parent().parent().data("path");
+      var path = $(this).closest("tr").data("path");
       if (path[path.length - 1] == "/") {
         path = path.slice(0, path.length - 1);
       }
@@ -159,7 +159,7 @@ function _reload(path) {
     });
     
     $(".button-delete").click(function(event) {
-      var path = $(this).parent().parent().data("path");
+      var path = $(this).closest("tr").data("path");
       $.ajax({
         url: 'delete',
         type: 'POST',
