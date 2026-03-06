@@ -377,21 +377,23 @@ NS_ASSUME_NONNULL_END
 
   NSMutableArray* folders = [NSMutableArray array];
   NSMutableArray* files = [NSMutableArray array];
-  for (NSString* item in [contents sortedArrayUsingSelector:@selector(localizedStandardCompare:)]) {
-    if (_allowHiddenItems || ![item hasPrefix:@"."]) {
-      NSDictionary* attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[absolutePath stringByAppendingPathComponent:item] error:NULL];
-      NSString* type = [attributes objectForKey:NSFileType];
-      if ([type isEqualToString:NSFileTypeDirectory]) {
-        [folders addObject:@{
-          @"path" : [[relativePath stringByAppendingPathComponent:item] stringByAppendingString:@"/"],
-          @"name" : item
-        }];
-      } else if ([type isEqualToString:NSFileTypeRegular] && [self _checkFileExtension:item]) {
-        [files addObject:@{
-          @"path" : [relativePath stringByAppendingPathComponent:item],
-          @"name" : item,
-          @"size" : (NSNumber*)[attributes objectForKey:NSFileSize]
-        }];
+  for (NSString* item in contents) {
+    @autoreleasepool {
+      if (_allowHiddenItems || ![item hasPrefix:@"."]) {
+        NSDictionary* attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:[absolutePath stringByAppendingPathComponent:item] error:NULL];
+        NSString* type = [attributes objectForKey:NSFileType];
+        if ([type isEqualToString:NSFileTypeDirectory]) {
+          [folders addObject:@{
+            @"path" : [[relativePath stringByAppendingPathComponent:item] stringByAppendingString:@"/"],
+            @"name" : item
+          }];
+        } else if ([type isEqualToString:NSFileTypeRegular] && [self _checkFileExtension:item]) {
+          [files addObject:@{
+            @"path" : [relativePath stringByAppendingPathComponent:item],
+            @"name" : item,
+            @"size" : (NSNumber*)[attributes objectForKey:NSFileSize]
+          }];
+        }
       }
     }
   }
@@ -422,7 +424,10 @@ NS_ASSUME_NONNULL_END
     NSString* zipName = [[fileName stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"/"]] stringByAppendingString:@".zip"];
     NSString* zipPath = [self _uniquePathForPath:[tempDirectory stringByAppendingPathComponent:zipName]];
 
-    BOOL success = [SSZipArchive createZipFileAtPath:zipPath withContentsOfDirectory:absolutePath keepParentDirectory:YES];
+    BOOL success = NO;
+    @autoreleasepool {
+      success = [SSZipArchive createZipFileAtPath:zipPath withContentsOfDirectory:absolutePath keepParentDirectory:YES];
+    }
     if (!success) {
       return [GCDWebServerErrorResponse responseWithServerError:kGCDWebServerHTTPStatusCode_InternalServerError message:@"Failed creating archive for \"%@\"", relativePath];
     }
