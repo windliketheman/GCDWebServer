@@ -1,6 +1,6 @@
 // Main Page
-"PROLOGUE" = "<p>Drag &amp; drop files on this window or use the \"Upload Files&hellip;\" button to upload new files.</p>";
-"UPLOAD"        = "Upload Files";
+"PROLOGUE" = "<p>Drag &amp; drop files/folders on this window or use the \"Upload Files/Folders&hellip;\" button to upload new files.</p>";
+"UPLOAD"        = "Upload Files/Folders";
 "CREATE_FOLDER" = "Create Folder";
 "REFRESH"       = "Refresh";
 "EPILOGUE" = "";
@@ -18,5 +18,4 @@
 "MOVE_ITEM" = "Move Item";
 "PLEASE_ENTER_THE_NEW_LOCATION_FOR_THIS_ITEM" = "Please enter the new location for this item:";
 "MOVE" = "Move";
-
 

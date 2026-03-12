@@ -26,7 +26,11 @@
  */
 
 .row-file {
-  height: 40px;
+  height: 44px;
+}
+
+.row-file .btn {
+  border-radius: 5px;
 }
 
 .column-icon {
@@ -72,6 +76,12 @@
 
 #reload {
   float: right;
+}
+
+#upload-file,
+#create-folder,
+#reload {
+  border-radius: 999px;
 }
 
 #create-input {

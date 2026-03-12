@@ -1,6 +1,6 @@
 // 主页
-"PROLOGUE" = "<p>拖动文件到本窗口或者使用 \"上传文件&hellip;\" 按钮来上传新文件。</p>";
-"UPLOAD"        = "上传文件";
+"PROLOGUE" = "<p>拖动文件/文件夹到本窗口或者使用 \"上传文件/文件夹&hellip;\" 按钮来上传新文件。</p>";
+"UPLOAD"        = "上传文件/文件夹";
 "CREATE_FOLDER" = "新建文件夹";
 "REFRESH"       = "刷新";
 "EPILOGUE" = "";
