@@ -1,6 +1,8 @@
 // Main Page
-"PROLOGUE" = "<p>Drag &amp; drop files/folders on this window or use the \"Upload Files/Folders&hellip;\" button to upload new files.</p>";
+"PROLOGUE" = "<p>Drag &amp; drop files/folders on this window or use the \"Upload Files&hellip;\" / \"Upload Folder&hellip;\" buttons to upload new content.</p>";
 "UPLOAD"        = "Upload Files/Folders";
+"UPLOAD_FILE"   = "Upload Files";
+"UPLOAD_FOLDER" = "Upload Folder";
 "CREATE_FOLDER" = "Create Folder";
 "REFRESH"       = "Refresh";
 "EPILOGUE" = "";

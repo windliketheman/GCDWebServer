@@ -139,6 +139,20 @@ NS_ASSUME_NONNULL_END
                    if ([siteBundle localizedStringForKey:key value:@"" table:nil]) {
                      upload = [siteBundle localizedStringForKey:key value:@"" table:nil];
                    }
+                   NSString *uploadFile = nil; key = @"UPLOAD_FILE";
+                   if ([siteBundle localizedStringForKey:key value:@"" table:nil]) {
+                     uploadFile = [siteBundle localizedStringForKey:key value:@"" table:nil];
+                   }
+                   if (uploadFile == nil || !uploadFile.length) {
+                     uploadFile = upload;
+                   }
+                   NSString *uploadFolder = nil; key = @"UPLOAD_FOLDER";
+                   if ([siteBundle localizedStringForKey:key value:@"" table:nil]) {
+                     uploadFolder = [siteBundle localizedStringForKey:key value:@"" table:nil];
+                   }
+                   if (uploadFolder == nil || !uploadFolder.length) {
+                     uploadFolder = upload;
+                   }
                    NSString *createFolder = nil; key = @"CREATE_FOLDER";
                    if ([siteBundle localizedStringForKey:key value:@"" table:nil]) {
                      createFolder = [siteBundle localizedStringForKey:key value:@"" table:nil];
@@ -183,6 +197,8 @@ NS_ASSUME_NONNULL_END
                                                                      @"header" : header,
                                                                      @"prologue" : prologue,
                                                                      @"upload": upload,
+                                                                     @"upload_file": uploadFile,
+                                                                     @"upload_folder": uploadFolder,
                                                                      @"create_folder": createFolder,
                                                                      @"refresh": refresh,
                                                                      @"cancel": cancel,

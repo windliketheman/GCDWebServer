@@ -35,7 +35,7 @@
     <link rel="stylesheet" href="css/bootstrap.css">
     <link rel="stylesheet" href="css/bootstrap-theme.css">
     <link rel="stylesheet" href="css/jquery.fileupload.css">
-    <link rel="stylesheet" href="css/index.css">
+    <link rel="stylesheet" href="css/index.css?v=20260303-16">
     <!--[if lt IE 9]>
       <script type="text/javascript" src="js/html5shiv.min.js"></script>
       <script type="text/javascript" src="js/respond.min.js"></script>
@@ -66,8 +66,12 @@
       
       <div class="btn-toolbar">
         <button type="button" class="btn btn-primary fileinput-button" id="upload-file">
-            <span class="glyphicon glyphicon-upload"></span> %upload%&hellip;
-          <input id="fileupload" type="file" name="files[]" multiple webkitdirectory directory>
+          <span class="glyphicon glyphicon-upload"></span> %upload_file%&hellip;
+          <input id="fileupload" type="file" name="files[]" multiple>
+        </button>
+        <button type="button" class="btn btn-info fileinput-button" id="upload-folder">
+          <span class="glyphicon glyphicon-upload"></span> %upload_folder%&hellip;
+          <input id="folderupload" type="file" name="files[]" multiple webkitdirectory directory>
         </button>
         <button type="button" class="btn btn-success" id="create-folder">
           <span class="glyphicon glyphicon-folder-close"></span> %create_folder%&hellip;
@@ -76,6 +80,7 @@
           <span class="glyphicon glyphicon-refresh"></span> %refresh%
         </button>
       </div>
+
       
       <div class="panel panel-default uploading">
         <div class="panel-heading">File Uploads in Progress</div>
@@ -105,12 +110,12 @@
           <div class="modal-body">
             <p>%create_folder_description%</p>
             <form onsubmit="return false">
-              <input type="text" autocomplete="off" id="create-input">
+              <input type="text" autocomplete="off" id="create-input" style="height:36px;padding:0 14px;border-radius:999px;">
             </form>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-dismiss="modal">%cancel%</button>
-            <button type="button" class="btn btn-primary" id="create-confirm">%create%</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal" style="border-radius:999px;">%cancel%</button>
+            <button type="button" class="btn btn-primary" id="create-confirm" style="border-radius:999px;">%create%</button>
           </div>
         </div>
       </div>

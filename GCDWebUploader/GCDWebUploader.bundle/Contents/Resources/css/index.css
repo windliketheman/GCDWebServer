@@ -79,14 +79,22 @@
 }
 
 #upload-file,
+#upload-folder,
 #create-folder,
-#reload {
-  border-radius: 999px;
+#reload,
+#create-modal .modal-footer .btn {
+  border-radius: 999px !important;
+}
+
+.picker-input {
+  display: none;
 }
 
 #create-input {
   width: 50%;
-  height: 20px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
 }
 
 #move-input {
@@ -103,6 +111,21 @@
 .btn-toolbar {
   margin-top: 30px;
   margin-bottom: 20px;
+}
+
+#create-modal .modal-content {
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+#create-modal .modal-header {
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+#create-modal .modal-footer {
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
 }
 
 .table .progress {

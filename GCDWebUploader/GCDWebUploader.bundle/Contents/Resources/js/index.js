@@ -180,18 +180,73 @@ function _reload(path) {
 
 $(document).ready(function() {
   
-  // Workaround Firefox and IE not showing file selection dialog when clicking on "upload-file" <button>
-  // Making it a <div> instead also works but then it the button doesn't work anymore with tab selection or accessibility
+  // Workaround Firefox and IE not showing file selection dialog when clicking on upload buttons.
   $("#upload-file").click(function(event) {
     $("#fileupload").click();
   });
-  
+  $("#upload-folder").click(function(event) {
+    $("#folderupload").click();
+  });
+
   // Prevent event bubbling when using workaround above
-  $("#fileupload").click(function(event) {
+  $("#fileupload, #folderupload").click(function(event) {
     event.stopPropagation();
   });
-  
-  var uploader = $("#fileupload").fileupload({
+
+  var fileUploader = $("#fileupload").fileupload({
+    dropZone: null,
+    pasteZone: null,
+    autoUpload: true,
+    sequentialUploads: true,
+    
+    url: 'upload',
+    type: 'POST',
+    dataType: 'json',
+    
+    start: function(e) {
+      $(".uploading").show();
+    },
+    
+    stop: function(e) {
+      $(".uploading").hide();
+    },
+    
+    add: function(e, data) {
+      var file = data.files[0];
+      data.paramName = data.paramName || 'files[]';
+      data.formData = { path: _path };
+      data.context = $(tmpl("template-uploads", {
+        path: _path + file.name
+      })).appendTo("#uploads");
+      var jqXHR = data.submit();
+      data.context.find("button").click(function(event) {
+        jqXHR.abort();
+      });
+    },
+    
+    progress: function(e, data) {
+      var progress = parseInt(data.loaded / data.total * 100, 10);
+      data.context.find(".progress-bar").css("width", progress + "%");
+    },
+    
+    done: function(e, data) {
+      _reload(_path);
+    },
+    
+    fail: function(e, data) {
+      var file = data.files[0];
+      if (data.errorThrown != "abort") {
+        _showError("Failed uploading \"" + file.name + "\" to \"" + _path + "\"", data.textStatus, data.errorThrown);
+      }
+    },
+    
+    always: function(e, data) {
+      data.context.remove();
+    },
+    
+  });
+
+  var uploader = $("#folderupload").fileupload({
     dropZone: null,
     pasteZone: null,
     autoUpload: true,
