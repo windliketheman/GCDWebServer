@@ -43,6 +43,24 @@ function formatFileSize(bytes) {
   return (bytes / 1000).toFixed(2) + ' KB';
 }
 
+function _isHiddenUploadPath(path) {
+  if (!path || !path.length) {
+    return false;
+  }
+  var parts = path.split('/');
+  for (var i = 0; i < parts.length; i++) {
+    var part = parts[i];
+    if (part && part.charAt(0) === '.') {
+      return true;
+    }
+  }
+  return false;
+}
+
+function _shouldSkipHiddenUpload(path) {
+  return !_allowHiddenItems && _isHiddenUploadPath(path);
+}
+
 function _showError(message, textStatus, errorThrown) {
   $("#alerts").prepend(tmpl("template-alert", {
     level: "danger",
@@ -213,6 +231,9 @@ $(document).ready(function() {
     
     add: function(e, data) {
       var file = data.files[0];
+      if (_shouldSkipHiddenUpload(file.name)) {
+        return;
+      }
       data.paramName = data.paramName || 'files[]';
       data.formData = { path: _path };
       data.context = $(tmpl("template-uploads", {
@@ -282,6 +303,9 @@ $(document).ready(function() {
         formMap = existingFormData;
       }
       var relativePath = formMap.relativePath || (file.webkitRelativePath && file.webkitRelativePath.length ? file.webkitRelativePath : null);
+      if (_shouldSkipHiddenUpload(relativePath || file.name)) {
+        return;
+      }
       var uploadPath = formMap.path || _path;
       var uploadId = formMap.uploadId || null;
       if (!uploadId && relativePath) {

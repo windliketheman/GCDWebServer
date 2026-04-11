@@ -208,6 +208,7 @@ NS_ASSUME_NONNULL_END
                                                                      @"move_item": moveItem,
                                                                      @"move_item_description": moveItemDescription,
                                                                      @"move": move,
+                                                                     @"allow_hidden_items": server.allowHiddenItems ? @"1" : @"0",
                                                                      @"epilogue" : epilogue,
                                                                      @"footer" : footer
                                                                    }];
