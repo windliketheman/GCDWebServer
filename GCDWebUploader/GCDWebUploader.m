@@ -461,7 +461,12 @@ NS_ASSUME_NONNULL_END
       [self.delegate webUploader:self didDownloadFileAtPath:absolutePath];
     });
   }
-  return [GCDWebServerFileResponse responseWithFile:absolutePath isAttachment:YES];
+  GCDWebServerFileResponse* response = [GCDWebServerFileResponse responseWithFile:absolutePath byteRange:request.byteRange isAttachment:YES];
+  if (response == nil) {
+    return [GCDWebServerErrorResponse responseWithClientError:kGCDWebServerHTTPStatusCode_RequestedRangeNotSatisfiable message:@"Requested range is not satisfiable for \"%@\"", relativePath];
+  }
+  [response setValue:@"bytes" forAdditionalHeader:@"Accept-Ranges"];
+  return response;
 }
 
 - (GCDWebServerResponse*)uploadFile:(GCDWebServerMultiPartFormRequest*)request {

@@ -29,6 +29,8 @@
 #error GCDWebServer requires ARC
 #endif
 
+#import <errno.h>
+#import <stdlib.h>
 #import <zlib.h>
 
 #import "GCDWebServerPrivate.h"
@@ -37,6 +39,33 @@ NSString* const GCDWebServerRequestAttribute_RegexCaptures = @"GCDWebServerReque
 
 #define kZlibErrorDomain @"ZlibErrorDomain"
 #define kGZipInitialBufferSize (256 * 1024)
+
+static BOOL _ParseByteRangeValue(NSString* string, NSUInteger* value) {
+  if (string.length == 0) {
+    return NO;
+  }
+
+  NSCharacterSet* nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+  if ([string rangeOfCharacterFromSet:nonDigits].location != NSNotFound) {
+    return NO;
+  }
+
+  errno = 0;
+  const char* bytes = [string UTF8String];
+  char* end = NULL;
+  unsigned long long parsedValue = strtoull(bytes, &end, 10);
+  if ((errno == ERANGE) || (end == bytes) || (*end != '\0')) {
+    return NO;
+  }
+  if (parsedValue > (unsigned long long)NSUIntegerMax) {
+    return NO;
+  }
+
+  if (value) {
+    *value = (NSUInteger)parsedValue;
+  }
+  return YES;
+}
 
 @interface GCDWebServerBodyDecoder : NSObject <GCDWebServerBodyWriter>
 @end
@@ -191,16 +220,18 @@ NSString* const GCDWebServerRequestAttribute_RegexCaptures = @"GCDWebServerReque
           components = [(NSString*)[components firstObject] componentsSeparatedByString:@"-"];
           if (components.count == 2) {
             NSString* startString = [components objectAtIndex:0];
-            NSInteger startValue = [startString integerValue];
             NSString* endString = [components objectAtIndex:1];
-            NSInteger endValue = [endString integerValue];
-            if (startString.length && (startValue >= 0) && endString.length && (endValue >= startValue)) {  // The second 500 bytes: "500-999"
+            NSUInteger startValue = 0;
+            NSUInteger endValue = 0;
+            BOOL hasStartValue = _ParseByteRangeValue(startString, &startValue);
+            BOOL hasEndValue = _ParseByteRangeValue(endString, &endValue);
+            if (hasStartValue && hasEndValue && (endValue >= startValue)) {  // The second 500 bytes: "500-999"
               _byteRange.location = startValue;
               _byteRange.length = endValue - startValue + 1;
-            } else if (startString.length && (startValue >= 0)) {  // The bytes after 9500 bytes: "9500-"
+            } else if (hasStartValue && (endString.length == 0)) {  // The bytes after 9500 bytes: "9500-"
               _byteRange.location = startValue;
               _byteRange.length = NSUIntegerMax;
-            } else if (endString.length && (endValue > 0)) {  // The final 500 bytes: "-500"
+            } else if ((startString.length == 0) && hasEndValue && (endValue > 0)) {  // The final 500 bytes: "-500"
               _byteRange.location = NSUIntegerMax;
               _byteRange.length = endValue;
             }
