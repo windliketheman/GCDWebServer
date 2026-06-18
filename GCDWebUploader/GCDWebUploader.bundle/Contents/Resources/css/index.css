@@ -94,7 +94,17 @@
   width: 50%;
   height: 36px;
   padding: 0 14px;
+  border: 1px solid #d8d8d8;
   border-radius: 999px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+#create-input:focus {
+  outline: none;
+  border-color: #d8d8d8;
+  -webkit-box-shadow: none;
+  box-shadow: none;
 }
 
 #move-input {
@@ -132,6 +142,12 @@
   margin-top: 0px;
   margin-bottom: 0px;
   height: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.table .progress .progress-bar {
+  border-radius: 999px;
 }
 
 .panel-default > .panel-heading {
